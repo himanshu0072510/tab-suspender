@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0a0a0a; color: #ededed;
+    width: 300px; padding: 16px;
+  }
+  h1 { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .row:last-child { border-bottom: none; }
+  .label { font-size: 13px; color: #aaa; }
+  .value { font-size: 13px; font-weight: 500; }
+  button {
+    width: 100%; margin-top: 12px;
+    background: #fff; color: #000; border: none;
+    padding: 10px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button:hover { background: #e5e5e5; }
+  button.secondary { background: rgba(255,255,255,0.08); color: #fff; margin-top: 6px; }
+  button.secondary:hover { background: rgba(255,255,255,0.12); }
+  .status { margin-top: 8px; font-size: 11px; color: #666; text-align: center; }
+  a { color: #60a5fa; font-size: 12px; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1>💤 Tab Suspender</h1>
+  <div class="row"><span class="label">Inactive threshold</span><span class="value" id="threshold">30 min</span></div>
+  <div class="row"><span class="label">Open tabs</span><span class="value" id="tabs">—</span></div>
+  <div class="row"><span class="label">Suspended tabs</span><span class="value" id="suspended">—</span></div>
+  <button id="suspendNow">Suspend current tab now</button>
+  <button class="secondary" id="settings">Settings</button>
+  <p class="status" id="status"></p>
+  <script src="popup.js"></script>
+</body>
+</html>

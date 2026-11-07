@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Tab Suspender — Settings</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0a0a0a; color: #ededed;
+    max-width: 640px; margin: 40px auto; padding: 0 24px;
+  }
+  h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  .sub { color: #888; font-size: 14px; margin-bottom: 32px; }
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 20px; margin-bottom: 16px;
+  }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+  .row + .row { border-top: 1px solid rgba(255,255,255,0.06); }
+  .label { font-size: 14px; }
+  .desc { font-size: 12px; color: #888; margin-top: 2px; }
+  input[type="number"] { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 6px 10px; border-radius: 6px; width: 80px; }
+  input[type="checkbox"] { width: 18px; height: 18px; }
+  textarea { width: 100%; background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 6px; font-family: monospace; font-size: 12px; min-height: 80px; }
+  button { background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+  button:hover { background: #e5e5e5; }
+  .saved { color: #4ade80; font-size: 13px; margin-left: 12px; opacity: 0; transition: opacity .3s; }
+  .saved.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <h1>Tab Suspender Settings</h1>
+  <p class="sub">Configure when and how tabs get suspended. Changes save automatically.</p>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div class="label">Suspend after (minutes)</div>
+        <div class="desc">Tabs inactive longer than this get suspended.</div>
+      </div>
+      <input type="number" id="minutes" min="1" max="1440" />
+    </div>
+    <div class="row">
+      <div>
+        <div class="label">Never suspend pinned tabs</div>
+        <div class="desc">Pinned tabs stay awake.</div>
+      </div>
+      <input type="checkbox" id="pinned" />
+    </div>
+    <div class="row">
+      <div>
+        <div class="label">Never suspend audible tabs</div>
+        <div class="desc">Tabs playing audio/video stay awake.</div>
+      </div>
+      <input type="checkbox" id="audible" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">Whitelist (one domain per line)</div>
+    <div class="desc" style="margin-bottom:10px">These sites will never be suspended.</div>
+    <textarea id="whitelist" placeholder="youtube.com&#10;gmail.com&#10;slack.com"></textarea>
+  </div>
+
+  <button id="save">Save settings</button>
+  <span class="saved" id="saved">Saved ✓</span>
+
+  <script src="options.js"></script>
+</body>
+</html>
