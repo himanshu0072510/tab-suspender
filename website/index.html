@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tab Suspender — Save Memory | Chrome Extension</title>
+<meta name="description" content="Automatically suspends inactive tabs to free up memory. Click to restore. Free, private, no data collection." />
+<meta name="theme-color" content="#0a0a0a" />
+<link rel="icon" href="../icons/icon128.png" />
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-2: #111118;
+    --card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --text: #ededed;
+    --muted: #9a9a9a;
+    --accent: #60a5fa;
+    --accent-2: #a78bfa;
+    --good: #4ade80;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  img { max-width: 100%; display: block; }
+  .container { width: min(1120px, 92%); margin: 0 auto; }
+
+  /* nav */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(12px);
+    background: rgba(10,10,10,0.7);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--text); }
+  .brand img { width: 28px; height: 28px; border-radius: 6px; }
+  .nav-links { display: flex; gap: 22px; font-size: 14px; color: var(--muted); }
+  .nav-links a { color: var(--muted); }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+  .nav-cta {
+    background: #fff; color: #000; padding: 8px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+  }
+  .nav-cta:hover { background: #e5e5e5; text-decoration: none; }
+
+  /* hero */
+  .hero { padding: 80px 0 60px; position: relative; }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25);
+    color: var(--accent); padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    margin-bottom: 20px;
+  }
+  h1.hero-title { font-size: clamp(36px, 5vw, 60px); line-height: 1.05; letter-spacing: -0.02em; font-weight: 800; }
+  .hero-title .grad {
+    background: linear-gradient(120deg, #fff, #60a5fa, #a78bfa);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero-sub { margin-top: 18px; font-size: 18px; color: var(--muted); max-width: 520px; }
+  .hero-actions { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 22px; border-radius: 999px; font-weight: 600; font-size: 15px;
+    transition: transform .15s, background .2s;
+  }
+  .btn:hover { transform: translateY(-2px); text-decoration: none; }
+  .btn-primary { background: #fff; color: #000; }
+  .btn-primary:hover { background: #e5e5e5; }
+  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+  .hero-visual {
+    position: relative; border-radius: var(--radius); overflow: hidden;
+    border: 1px solid var(--border); box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .hero-visual img { width: 100%; height: auto; }
+  .hero-visual .glow {
+    position: absolute; inset: -40%; background: radial-gradient(circle, rgba(96,165,250,0.25), transparent 60%);
+    pointer-events: none;
+  }
+
+  /* stats strip */
+  .stats-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin: 20px 0 80px; padding: 24px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .stat { text-align: center; }
+  .stat .num { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* sections */
+  section { padding: 80px 0; }
+  .section-head { text-align: center; max-width: 680px; margin: 0 auto 56px; }
+  .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 12px; }
+  h2 { font-size: clamp(28px, 3.5vw, 42px); letter-spacing: -0.02em; font-weight: 700; line-height: 1.1; }
+  .section-head p { margin-top: 14px; color: var(--muted); font-size: 17px; }
+
+  /* features */
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .feat {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 26px;
+    transition: transform .2s, border-color .2s;
+  }
+  .feat:hover { transform: translateY(-4px); border-color: rgba(96,165,250,0.3); }
+  .feat-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 16px;
+    background: linear-gradient(135deg, rgba(96,165,250,0.15), rgba(167,139,250,0.15));
+  }
+  .feat h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .feat p { color: var(--muted); font-size: 14px; }
+
+  /* animated walkthrough */
+  .walk { background: var(--bg-2); }
+  .browser {
+    max-width: 920px; margin: 0 auto; border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border); background: #0f0f14;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .browser-bar {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: #1a1a22; border-bottom: 1px solid var(--border);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots span { width: 10px; height: 10px; border-radius: 50%; background: #333; }
+  .dots span:nth-child(1){background:#ff5f57} .dots span:nth-child(2){background:#febc2e} .dots span:nth-child(3){background:#28c840}
+  .addr { flex: 1; background: #0a0a0a; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; }
+  .tabs-row { display: flex; gap: 4px; padding: 8px 10px 0; background: #1a1a22; }
+  .tab {
+    display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px 8px 0 0;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-bottom: none;
+    font-size: 12px; color: var(--muted); min-width: 120px;
+    transition: all .4s ease;
+  }
+  .tab.active { background: #0f0f14; color: var(--text); }
+  .tab .favicon { width: 12px; height: 12px; border-radius: 3px; background: #60a5fa; }
+  .tab.t2 .favicon { background: #a78bfa; }
+  .tab.suspended { background: rgba(96,165,250,0.08); color: #60a5fa; }
+  .tab.suspended .favicon { background: #444; }
+  .viewport { padding: 28px; min-height: 260px; position: relative; background: #0f0f14; }
+  .page {
+    border-radius: 10px; padding: 24px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+  }
+  .page h4 { font-size: 16px; margin-bottom: 8px; }
+  .page p { color: var(--muted); font-size: 13px; }
+  .suspended-page { text-align: center; padding: 36px 24px; }
+  .suspended-page .icon { font-size: 40px; margin-bottom: 8px; }
+  .suspended-page .url { font-size: 12px; color: var(--muted); word-break: break-all; margin: 8px 0 16px; }
+  .suspended-page button { background: #fff; color: #000; border: none; padding: 8px 18px; border-radius: 999px; font-weight: 600; font-size: 13px; cursor: pointer; }
+  .mem-meter {
+    position: absolute; right: 20px; top: 20px; width: 150px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+    font-size: 11px;
+  }
+  .mem-meter .bar { height: 8px; border-radius: 4px; background: #222; margin-top: 6px; overflow: hidden; }
+  .mem-meter .fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+  .mem-meter .fill.high { background: linear-gradient(90deg,#f87171,#fbbf24); width: 78%; }
+  .mem-meter .fill.low { background: linear-gradient(90deg,#4ade80,#60a5fa); width: 22%; }
+  .caption-row { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .step-pill {
+    background: var(--card); border: 1px solid var(--border); padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; color: var(--muted);
+  }
+  .step-pill.active { color: var(--text); border-color: rgba(96,165,250,0.4); background: rgba(96,165,250,0.1); }
+  /* how it works */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; position: relative; }
+  .step { text-align: center; padding: 24px; }
+  .step-num {
+    width: 52px; height: 52px; margin: 0 auto 18px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa); color: #000;
+    font-weight: 800; font-size: 20px;
+  }
+  .step h3 { font-size: 17px; margin-bottom: 8px; }
+  .step p { color: var(--muted); font-size: 14px; }
+
+  /* screenshots */
+  .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .shot {
+    border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .shot img { width: 100%; height: 220px; object-fit: cover; }
+  .shot .cap { padding: 12px 16px; font-size: 13px; color: var(--muted); }
+
+  /* demo */
+  .demo-box {
+    border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border);
+    background: #000; box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  .demo-box img { width: 100%; height: auto; }
+
+  /* install */
+  .install { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  .install ol { padding-left: 20px; color: var(--muted); }
+  .install li { margin-bottom: 12px; }
+  .install li strong { color: var(--text); }
+  .code {
+    background: #0d0d12; border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px; color: #c9d1d9; overflow-x: auto;
+  }
+
+  /* privacy */
+  .privacy {
+    background: linear-gradient(135deg, rgba(74,222,128,0.08), rgba(96,165,250,0.08));
+    border: 1px solid rgba(74,222,128,0.2); border-radius: var(--radius);
+    padding: 40px; text-align: center;
+  }
+  .privacy h2 { font-size: 30px; }
+  .privacy p { color: var(--muted); margin-top: 12px; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .privacy .checks { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
+  .check { background: rgba(255,255,255,0.05); border: 1px solid var(--border); padding: 8px 14px; border-radius: 999px; font-size: 13px; }
+
+  /* faq */
+  .faq { max-width: 760px; margin: 0 auto; }
+  .faq-item { border-bottom: 1px solid var(--border); padding: 20px 0; }
+  .faq-item summary { cursor: pointer; font-weight: 600; font-size: 16px; list-style: none; display: flex; justify-content: space-between; }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after { content: "+"; color: var(--muted); }
+  .faq-item[open] summary::after { content: "−"; }
+  .faq-item p { margin-top: 10px; color: var(--muted); font-size: 14px; }
+
+  /* footer */
+  footer { padding: 40px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
+  footer .inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+
+  @media (max-width: 860px) {
+    .hero-grid, .install { grid-template-columns: 1fr; }
+    .features, .steps, .shots { grid-template-columns: 1fr 1fr; }
+    .stats-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 560px) {
+    .features, .steps, .shots { grid-template-columns: 1fr; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container inner">
+    <a class="brand" href="#top"><img src="../icons/icon128.png" alt="" /> Tab Suspender</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#install">Install</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="nav-cta" href="#install">Get extension</a>
+  </div>
+</nav>
+
+<main id="top">
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <span class="badge">💤 Manifest V3 · Free &amp; Private</span>
+        <h1 class="hero-title">Suspend inactive tabs.<br /><span class="grad">Reclaim your memory.</span></h1>
+        <p class="hero-sub">
+          Tab Suspender automatically puts idle tabs to sleep so Chrome stops eating RAM.
+          One click restores them instantly. No accounts, no tracking, no cost.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#install">Install in 30 seconds →</a>
+          <a class="btn btn-ghost" href="#features">See features</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="glow"></div>
+        <img src="../marketing/assets/demo.gif" alt="Tab Suspender demo" />
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="stats-strip">
+        <div class="stat"><div class="num">~0 MB</div><div class="lbl">memory per suspended tab</div></div>
+        <div class="stat"><div class="num">30 min</div><div class="lbl">default inactivity threshold</div></div>
+        <div class="stat"><div class="num">1 click</div><div class="lbl">to restore any tab</div></div>
+        <div class="stat"><div class="num">0</div><div class="lbl">data collected</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" class="walk">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">Live demo</div>
+        <h2>Watch a tab get suspended</h2>
+        <p>An animated walkthrough of what happens to an idle tab.</p>
+      </div>
+      <div class="browser">
+        <div class="browser-bar">
+          <div class="dots"><span></span><span></span><span></span></div>
+          <div class="addr" id="addr">https://example.com/article</div>
+        </div>
+        <div class="tabs-row">
+          <div class="tab active" id="tab1"><span class="favicon"></span> Article</div>
+          <div class="tab t2" id="tab2"><span class="favicon"></span> Dashboard</div>
+        </div>
+        <div class="viewport">
+          <div class="mem-meter">
+            <div>Chrome memory</div>
+            <div class="bar"><div class="fill high" id="memfill"></div></div>
+            <div id="memlabel" style="margin-top:6px; color:var(--muted);">High — 2 heavy tabs</div>
+          </div>
+          <div id="view"></div>
+        </div>
+      </div>
+      <div class="caption-row" id="pills">
+        <span class="step-pill" data-step="0">1. Idle tab detected</span>
+        <span class="step-pill" data-step="1">2. Tab suspended</span>
+        <span class="step-pill" data-step="2">3. Memory freed</span>
+        <span class="step-pill" data-step="3">4. Click to restore</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">Features</div>
+        <h2>Everything you need to keep Chrome fast</h2>
+        <p>Lightweight, configurable, and respectful of the tabs you actually care about.</p>
+      </div>
+      <div class="features">
+        <div class="feat">
+          <div class="feat-icon">⏱️</div>
+          <h3>Auto-suspend after inactivity</h3>
+          <p>Tabs idle longer than your threshold are automatically replaced with a tiny suspended page. Default 30 minutes, fully configurable from 1 to 1440.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">📌</div>
+          <h3>Never suspends pinned tabs</h3>
+          <p>Pinned tabs stay awake by default. Toggle the behavior in settings if you prefer.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🔊</div>
+          <h3>Protects audible tabs</h3>
+          <p>Tabs playing audio or video are never suspended, so your music and calls keep going.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🛡️</div>
+          <h3>Domain whitelist</h3>
+          <p>Keep specific sites (Gmail, Slack, YouTube…) always awake. One domain per line in settings.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">⚡</div>
+          <h3>Manual "Suspend now"</h3>
+          <p>Suspend the current tab instantly from the popup — perfect before stepping away.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🔄</div>
+          <h3>One-click restore</h3>
+          <p>Click Restore or press Enter on the suspended page. The original URL loads right back.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">📊</div>
+          <h3>Live popup stats</h3>
+          <p>See open tabs, suspended tabs, and your threshold at a glance from the toolbar.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">☁️</div>
+          <h3>Synced settings</h3>
+          <p>Settings live in Chrome sync storage, so they follow you across devices.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon">🔒</div>
+          <h3>Private by design</h3>
+          <p>No data collected or sent anywhere. All logic runs locally in your browser.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" style="background: var(--bg-2);">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">How it works</div>
+        <h2>Three steps, zero friction</h2>
+        <p>A service worker checks your tabs once a minute and suspends the idle ones.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Track activity</h3>
+          <p>Tab Suspender records when each tab was last active using Chrome's tabs and alarms APIs.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Suspend idle tabs</h3>
+          <p>Tabs inactive longer than your threshold are swapped for a lightweight suspended page that uses ~0 MB.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Restore on demand</h3>
+          <p>The original URL is stored in the query string. Click Restore to navigate back instantly.</p>
+        </div>
+      </div>
+      <div class="container" style="margin-top:48px;">
+        <div class="demo-box">
+          <img src="../marketing/assets/poster_wide.png" alt="Tab Suspender overview" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screenshots">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">Screenshots</div>
+        <h2>See it in action</h2>
+        <p>The popup, settings page, and suspended tab view.</p>
+      </div>
+      <div class="shots">
+        <div class="shot">
+          <img src="../marketing/screenshots/popup.png" alt="Popup" />
+          <div class="cap">Toolbar popup with live stats</div>
+        </div>
+        <div class="shot">
+          <img src="../marketing/screenshots/options.png" alt="Settings" />
+          <div class="cap">Full settings page</div>
+        </div>
+        <div class="shot">
+          <img src="../marketing/screenshots/suspended.png" alt="Suspended tab" />
+          <div class="cap">Suspended tab page</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" style="background: var(--bg-2);">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">Install</div>
+        <h2>Get started in developer mode</h2>
+        <p>Tab Suspender is free and open. Load it unpacked in Chrome in under a minute.</p>
+      </div>
+      <div class="install">
+        <div>
+          <ol>
+            <li><strong>Download</strong> or clone this repository to your computer.</li>
+            <li>Open Chrome and go to <code>chrome://extensions</code>.</li>
+            <li>Enable <strong>Developer mode</strong> (top right toggle).</li>
+            <li>Click <strong>Load unpacked</strong> and select the extension folder.</li>
+            <li>The 💤 icon appears in your toolbar — you're done.</li>
+          </ol>
+        </div>
+        <div>
+          <div class="code">
+$ git clone &lt;repo-url&gt;<br />
+$ cd tab-suspender<br />
+# then load unpacked in chrome://extensions
+          </div>
+          <p style="margin-top:16px; color: var(--muted); font-size: 14px;">
+            Works on Chrome, Edge, Brave and any Chromium-based browser (Manifest V3).
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="container">
+      <div class="privacy">
+        <div class="eyebrow">Privacy</div>
+        <h2>Your tabs stay yours.</h2>
+        <p>No data is collected, transmitted, or stored on any server. Settings are saved locally in Chrome sync storage and never leave your browser.</p>
+        <div class="checks">
+          <span class="check">✓ No analytics</span>
+          <span class="check">✓ No tracking</span>
+          <span class="check">✓ No accounts</span>
+          <span class="check">✓ No network requests</span>
+          <span class="check">✓ Open source</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" style="background: var(--bg-2);">
+    <div class="container">
+      <div class="section-head">
+        <div class="eyebrow">FAQ</div>
+        <h2>Common questions</h2>
+      </div>
+      <div class="faq">
+        <details class="faq-item">
+          <summary>Will I lose my tab's scroll position or form data?</summary>
+          <p>Suspending navigates the tab to a lightweight page, so unsaved in-page state (scroll position, half-typed text) is not preserved. The URL is kept and restored on click. Avoid suspending tabs with unsaved work, or whitelist those sites.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does it suspend tabs playing music?</summary>
+          <p>No. Tabs that are audible are skipped by default. You can toggle this in settings.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I exclude certain websites?</summary>
+          <p>Yes. Add domains (one per line) to the whitelist in settings. Matching tabs are never suspended.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What about pinned tabs?</summary>
+          <p>Pinned tabs are never suspended by default. This can be changed in settings.</p>
+        </details>
+        <details class="faq-item">
+          <summary>How much memory does it save?</summary>
+          <p>A suspended tab uses roughly 0 MB instead of the tens or hundreds of MB a full page consumes, freeing RAM for the tabs you're actually using.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does it work on Firefox?</summary>
+          <p>It's built for Chromium browsers using Manifest V3. Firefox support would require minor changes.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container inner">
+    <span>© Tab Suspender — Save Memory. Free &amp; private.</span>
+    <span>Built with Manifest V3 · Service Worker · Chrome Storage &amp; Alarms APIs</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const view = document.getElementById('view');
+  const tab2 = document.getElementById('tab2');
+  const addr = document.getElementById('addr');
+  const memfill = document.getElementById('memfill');
+  const memlabel = document.getElementById('memlabel');
+  const pills = document.querySelectorAll('.step-pill');
+
+  const states = [
+    // 0: idle detected
+    () => {
+      tab2.classList.remove('suspended');
+      tab2.innerHTML = '<span class="favicon"></span> Dashboard';
+      addr.textContent = 'https://example.com/article';
+      view.innerHTML = '<div class="page"><h4>Article — still open</h4><p>This tab is active. The Dashboard tab has been idle for 30+ minutes…</p></div>';
+      memfill.className = 'fill high';
+      memlabel.textContent = 'High — 2 heavy tabs';
+      highlight(0);
+    },
+    // 1: suspended
+    () => {
+      tab2.classList.add('suspended');
+      tab2.innerHTML = '<span class="favicon"></span> 💤 Dashboard';
+      addr.textContent = 'chrome-extension://…/suspended.html?url=…';
+      view.innerHTML = '<div class="suspended-page"><div class="icon">💤</div><h4>Tab Suspended</h4><div class="url">https://dashboard.example.com</div><button>Restore Tab</button><p style="margin-top:10px;font-size:12px;color:#666">This tab was suspended to save memory.</p></div>';
+      memfill.className = 'fill low';
+      memlabel.textContent = 'Low — 1 heavy tab';
+      highlight(1);
+    },
+    // 2: memory freed (same suspended view, label)
+    () => {
+      highlight(2);
+    },
+    // 3: restore
+    () => {
+      tab2.classList.remove('suspended');
+      tab2.innerHTML = '<span class="favicon"></span> Dashboard';
+      addr.textContent = 'https://dashboard.example.com';
+      view.innerHTML = '<div class="page"><h4>Dashboard — restored</h4><p>Original URL loaded back. Ready to use.</p></div>';
+      memfill.className = 'fill high';
+      memlabel.textContent = 'High — 2 heavy tabs';
+      highlight(3);
+    },
+  ];
+
+  function highlight(i){
+    pills.forEach((p, idx) => p.classList.toggle('active', idx === i));
+  }
+
+  let i = 0;
+  states[0]();
+  setInterval(() => { i = (i+1) % states.length; states[i](); }, 2600);
+})();
+</script>
+</body>
+</html>
