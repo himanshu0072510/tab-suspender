@@ -1,5 +1,7 @@
 # Tab Suspender — Save Memory
 
+Website: https://himanshu0072510.github.io/tab-suspender/
+
 A Chrome extension that automatically suspends inactive tabs to free up memory. Click to restore. Free, private, no data collection.
 
 ## Features
